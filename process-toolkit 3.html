@@ -1,0 +1,1298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Process Toolkit — SOP/WIM Capture &amp; Time &amp; Motion Study</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+:root{
+  --accent:#1F4E79;
+  --accent-2:#2E6DA4;
+  --accent-soft:#EDF3F9;
+  --line:#E4E7EB;
+  --line-2:#F0F2F5;
+  --text:#161A1E;
+  --muted:#6B7280;
+  --muted-2:#9AA1AA;
+  --warn:#B42318;
+  --ok:#137547;
+  --bg:#FFFFFF;
+  --shadow:0 1px 2px rgba(16,24,40,.04), 0 4px 14px rgba(16,24,40,.05);
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg);color:var(--text);
+  font-family:"Segoe UI",-apple-system,BlinkMacSystemFont,Arial,sans-serif;
+  font-size:14px;line-height:1.55;-webkit-font-smoothing:antialiased;
+}
+/* ---------- Header ---------- */
+header{border-bottom:1px solid var(--line);padding:20px 34px 0 34px;position:sticky;top:0;background:#fff;z-index:40}
+.brand{display:flex;align-items:baseline;gap:12px}
+h1{font-size:17px;font-weight:600;letter-spacing:-0.2px;margin:0}
+.brand .dot{width:7px;height:7px;border-radius:50%;background:var(--accent)}
+.sub{color:var(--muted);font-size:12.5px;margin:2px 0 16px 0}
+.tabs{display:flex;gap:30px}
+.tab{background:none;border:none;padding:0 0 12px 0;margin:0;font-family:inherit;font-size:14px;
+  font-weight:500;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:color .12s}
+.tab:hover{color:var(--text)}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+main{padding:26px 34px 90px 34px;max-width:1200px}
+.panel{display:none}
+.panel.active{display:block}
+/* ---------- Structure ---------- */
+.card{border:1px solid var(--line);border-radius:6px;padding:18px 20px;margin-bottom:20px;background:#fff}
+.card.flat{box-shadow:none}
+.card-head{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:14px;flex-wrap:wrap}
+h2{font-size:11.5px;font-weight:600;text-transform:uppercase;letter-spacing:.85px;color:var(--muted);margin:0}
+h2 .n{color:var(--accent);font-weight:600}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+/* ---------- Controls ---------- */
+button{font-family:inherit;font-size:13px;padding:8px 16px;border-radius:4px;cursor:pointer;
+  border:1px solid var(--line);background:#fff;color:var(--text);
+  transition:background .12s,border-color .12s,color .12s}
+button:hover:not(:disabled){border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+button.primary:hover:not(:disabled){background:#17395A;border-color:#17395A;color:#fff}
+button.danger{color:var(--warn)}
+button.danger:hover:not(:disabled){border-color:var(--warn);color:var(--warn);background:#FDF3F2}
+button:disabled{opacity:.38;cursor:not-allowed}
+button.tiny{padding:4px 10px;font-size:12px}
+button.ghost{border-color:transparent;color:var(--muted)}
+input,select,textarea{font-family:inherit;font-size:13px;color:var(--text);
+  border:1px solid var(--line);border-radius:4px;padding:7px 9px;background:#fff}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+label{display:block;font-size:11.5px;color:var(--muted);margin-bottom:5px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px}
+.field input,.field select,.field textarea{width:100%}
+input[type=range]{accent-color:var(--accent);padding:0}
+/* ---------- Recording bar ---------- */
+.recbar{
+  display:flex;align-items:center;gap:26px;flex-wrap:wrap;
+  border:1px solid var(--line);border-left:3px solid var(--line);border-radius:6px;
+  padding:14px 18px;margin-bottom:18px;background:#fff;box-shadow:var(--shadow);
+  transition:border-color .2s;
+}
+.recbar.live{border-left-color:var(--accent);background:linear-gradient(90deg,var(--accent-soft) 0%,#fff 46%)}
+.sessionclock{font-family:Consolas,"Courier New",monospace;font-size:31px;font-weight:600;
+  letter-spacing:-1px;color:var(--muted-2);line-height:1.1}
+.recbar.live .sessionclock{color:var(--accent)}
+.clocklabel{font-size:10.5px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-top:1px}
+.reclamp{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted)}
+.reclamp .bulb{width:8px;height:8px;border-radius:50%;background:#CBD2D9}
+.recbar.live .reclamp .bulb{background:var(--warn);animation:blink 1.3s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+.recbar .sep{width:1px;align-self:stretch;background:var(--line)}
+/* ---------- KPI strip ---------- */
+.kpis{display:flex;gap:30px;flex-wrap:wrap}
+.kpi .v{font-size:20px;font-weight:600;color:var(--accent);line-height:1.2}
+.kpi .l{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px}
+.kpi.sm .v{font-size:16px}
+/* ---------- Settings disclosure ---------- */
+details.settings{border:1px solid var(--line);border-radius:6px;margin-bottom:20px;background:#fff}
+details.settings>summary{
+  list-style:none;cursor:pointer;padding:11px 18px;font-size:12px;font-weight:600;
+  text-transform:uppercase;letter-spacing:.7px;color:var(--muted);display:flex;
+  align-items:center;justify-content:space-between;
+}
+details.settings>summary::-webkit-details-marker{display:none}
+details.settings>summary:hover{color:var(--accent)}
+details.settings>summary::after{content:'+';font-size:15px;color:var(--muted-2)}
+details.settings[open]>summary::after{content:'–'}
+details.settings[open]>summary{border-bottom:1px solid var(--line-2)}
+.settings-body{padding:16px 18px;display:flex;gap:24px;flex-wrap:wrap;align-items:flex-end}
+.settings-body .field{min-width:132px}
+.settings-body .val{color:var(--accent);font-weight:600}
+.meter{height:6px;background:var(--accent-soft);border-radius:3px;overflow:hidden;width:118px}
+.meter div{height:100%;width:0;background:var(--accent);transition:width .12s linear}
+.settings-body.manual .auto-only{opacity:.34;pointer-events:none}
+.subhead{width:100%;font-size:10.5px;text-transform:uppercase;letter-spacing:.8px;
+  color:var(--muted-2);border-top:1px solid var(--line-2);padding-top:14px;margin-top:2px}
+/* ---------- Steps ---------- */
+#stepList{list-style:none;margin:0;padding:0}
+.step{display:flex;gap:16px;align-items:flex-start;border:1px solid var(--line);border-radius:6px;
+  padding:12px;margin-bottom:10px;background:#fff;transition:border-color .12s,box-shadow .12s}
+.step:hover{border-color:#CFD6DE;box-shadow:var(--shadow)}
+.step.dragging{opacity:.4}
+.step.over{border-color:var(--accent);background:var(--accent-soft)}
+.step .num{font-size:12px;font-weight:600;color:#fff;background:var(--accent);
+  min-width:24px;height:24px;border-radius:4px;display:flex;align-items:center;justify-content:center;
+  cursor:grab;flex:none;margin-top:2px}
+.thumbwrap{position:relative;flex:none}
+.step img.thumb{width:196px;height:auto;border:1px solid var(--line);border-radius:3px;display:block;cursor:crosshair}
+.thumbwrap .tag{position:absolute;left:5px;bottom:5px;background:rgba(255,255,255,.93);
+  border:1px solid var(--line);border-radius:3px;font-size:10px;padding:1px 6px;color:var(--muted)}
+.step .body{flex:1;min-width:0}
+.step .body input.desc{width:100%;margin-bottom:8px;font-size:13.5px}
+.timestrip{display:flex;gap:18px;flex-wrap:wrap;align-items:center;margin-bottom:6px}
+.tchip{font-size:11.5px;color:var(--muted)}
+.tchip b{color:var(--text);font-weight:600;font-family:Consolas,monospace;font-size:12px}
+.tchip.dwell b{color:var(--accent)}
+.tchip.slow b{color:var(--warn)}
+.bar{height:4px;background:var(--line-2);border-radius:2px;overflow:hidden;margin-top:7px;max-width:420px}
+.bar div{height:100%;background:var(--accent);border-radius:2px}
+.bar.slow div{background:var(--warn)}
+.step .meta{font-size:11px;color:var(--muted-2)}
+.step .acts{display:flex;flex-direction:column;gap:6px;flex:none}
+.empty{color:var(--muted);font-size:13px;padding:26px 0;text-align:center;
+  border:1px dashed var(--line);border-radius:6px}
+/* ---------- Status ---------- */
+.status{font-size:12.5px;color:var(--muted);border-left:2px solid var(--line);
+  padding:7px 0 7px 13px;margin-top:14px}
+.status.on{border-left-color:var(--accent);color:var(--accent)}
+.status.err{border-left-color:var(--warn);color:var(--warn)}
+.hint{font-size:12px;color:var(--muted);margin-top:10px;max-width:780px;line-height:1.6}
+kbd{font-family:Consolas,monospace;font-size:11.5px;background:var(--accent-soft);
+  border:1px solid var(--line);border-radius:3px;padding:1px 5px;color:var(--accent)}
+/* ---------- Tables ---------- */
+table{border-collapse:collapse;width:100%;font-size:13px}
+th{text-align:left;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.5px;
+  color:var(--muted);border-bottom:1px solid var(--line);padding:9px 10px}
+td{border-bottom:1px solid var(--line-2);padding:9px 10px;vertical-align:middle}
+tbody tr:hover{background:#FAFBFC}
+/* ---------- Charts ---------- */
+.charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:20px}
+.chart-box{border:1px solid var(--line);border-radius:6px;padding:16px}
+.chart-box h3{font-size:12.5px;font-weight:600;margin:0 0 4px 0}
+.chart-box .cap{font-size:11.5px;color:var(--muted);margin-bottom:12px}
+/* ---------- Modal ---------- */
+.modal{position:fixed;inset:0;background:rgba(16,22,28,.55);display:none;z-index:99;
+  align-items:center;justify-content:center;padding:24px}
+.modal.open{display:flex}
+.modal .mcard{background:#fff;border-radius:6px;max-width:1100px;width:100%;max-height:94vh;
+  display:flex;flex-direction:column;overflow:hidden}
+.modal .head{padding:14px 18px;border-bottom:1px solid var(--line);display:flex;
+  justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}
+.modal .head strong{font-size:14px}
+.modal .stage{padding:16px;overflow:auto;background:#F6F8FA;text-align:center}
+.modal img{max-width:100%;cursor:crosshair;border:1px solid var(--line);background:#fff}
+.modal .foot{padding:12px 18px;border-top:1px solid var(--line);display:flex;gap:10px;
+  justify-content:flex-end;align-items:center;flex-wrap:wrap}
+.modal .foot .left{margin-right:auto;font-size:12px;color:var(--muted)}
+/* ---------- Time study module ---------- */
+.tm-step{display:grid;grid-template-columns:26px 1fr 150px 84px 64px;gap:10px;align-items:center;
+  border:1px solid var(--line);border-radius:5px;padding:8px 10px;margin-bottom:6px}
+.tm-step.current{border-color:var(--accent);background:var(--accent-soft)}
+.tm-step .idx{font-size:12px;font-weight:600;color:var(--accent)}
+.clock{font-family:Consolas,"Courier New",monospace;font-size:32px;font-weight:600;
+  letter-spacing:-1px;color:var(--accent)}
+.clock-wrap{display:flex;align-items:baseline;gap:18px;margin-bottom:14px}
+.clock-meta{font-size:12.5px;color:var(--muted)}
+hr{border:none;border-top:1px solid var(--line);margin:26px 0}
+video{display:none}
+#offscreen{position:fixed;left:-99999px;top:0;width:820px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand"><span class="dot"></span><h1>Process Toolkit</h1></div>
+  <div class="sub">Screen-capture SOP/WIM builder with built-in screen timing, plus a standalone observer stopwatch. Everything runs in your browser — nothing is uploaded.</div>
+  <div class="tabs">
+    <button class="tab active" data-panel="capture">SOP / WIM Capture</button>
+    <button class="tab" data-panel="timemotion">Observer Time Study</button>
+  </div>
+</header>
+
+<main>
+
+<!-- ============================ MODULE 1 ============================ -->
+<div class="panel active" id="capture">
+
+  <!-- Recording bar -->
+  <div class="recbar" id="recbar">
+    <div>
+      <div class="sessionclock" id="sessClock">00:00:00</div>
+      <div class="clocklabel">Session elapsed</div>
+    </div>
+    <div class="sep"></div>
+    <div class="kpis">
+      <div class="kpi sm"><div class="v" id="kSteps">0</div><div class="l">Steps</div></div>
+      <div class="kpi sm"><div class="v" id="kAvg">—</div><div class="l">Avg / screen</div></div>
+      <div class="kpi sm"><div class="v" id="kLongest">—</div><div class="l">Longest screen</div></div>
+      <div class="kpi sm"><div class="v" id="kActive">—</div><div class="l">Timed total</div></div>
+    </div>
+    <div class="sep"></div>
+    <div class="reclamp"><span class="bulb"></span><span id="recLamp">Not recording</span></div>
+  </div>
+
+  <div class="row" style="margin-bottom:6px">
+    <button class="primary" id="btnStart">Start Recording</button>
+    <button id="btnCapture" disabled>Capture Step</button>
+    <button id="btnPip" disabled>Floating Button</button>
+    <button id="btnStop" disabled>Stop Recording</button>
+    <button class="ghost danger" id="btnClear">Clear All</button>
+  </div>
+  <div class="status" id="capStatus">Idle. Click <strong>Start Recording</strong> and pick the screen or window you want to document. The session clock starts the moment sharing begins.</div>
+
+  <details class="settings" id="setCapture">
+    <summary>Capture &amp; marker settings</summary>
+    <div class="settings-body" id="setBody">
+      <div class="field" style="min-width:206px"><label>Capture mode</label>
+        <select id="capMode">
+          <option value="manual">Manual — button or hotkey</option>
+          <option value="auto" selected>Auto — detect screen change</option>
+        </select></div>
+      <div class="field auto-only"><label>Sensitivity <span id="lblSens" class="val"></span></label>
+        <input type="range" id="capSens" min="1" max="20" value="6"></div>
+      <div class="field auto-only"><label>Settle delay <span id="lblSettle" class="val"></span></label>
+        <input type="range" id="capSettle" min="200" max="2500" step="100" value="700"></div>
+      <div class="field auto-only"><label>Min gap <span id="lblGap" class="val"></span></label>
+        <input type="range" id="capGap" min="500" max="8000" step="250" value="1500"></div>
+      <div class="field auto-only"><label>Activity</label><div class="meter"><div id="meterFill"></div></div></div>
+
+      <div class="subhead">Click marker</div>
+      <div class="field" style="min-width:176px"><label>Style</label>
+        <select id="mkStyle">
+          <option value="ring" selected>Ring</option>
+          <option value="pulse">Ring + halo</option>
+          <option value="box">Box outline</option>
+          <option value="spot">Spotlight (dim rest)</option>
+          <option value="none">Off</option>
+        </select></div>
+      <div class="field" style="min-width:110px"><label>Colour</label>
+        <input type="color" id="mkColor" value="#E8452C" style="height:32px;padding:2px;width:100%"></div>
+      <div class="field" style="min-width:136px"><label>Size <span id="lblMkSize" class="val"></span></label>
+        <input type="range" id="mkSize" min="1" max="6" step="0.25" value="2.6"></div>
+      <div class="field" style="min-width:196px"><label>&nbsp;</label>
+        <label style="display:flex;gap:7px;align-items:center;margin:0;font-size:12.5px;color:var(--text)">
+          <input type="checkbox" id="mkNumber" checked style="width:auto"> Numbered badge on marker</label></div>
+
+      <div class="subhead">Screen timing</div>
+      <div class="field" style="min-width:186px"><label>Flag screens longer than <span id="lblSlow" class="val"></span></label>
+        <input type="range" id="slowThresh" min="5" max="120" step="5" value="30"></div>
+      <div class="field" style="min-width:230px"><label>&nbsp;</label>
+        <label style="display:flex;gap:7px;align-items:center;margin:0;font-size:12.5px;color:var(--text)">
+          <input type="checkbox" id="incTiming" checked style="width:auto"> Include timing analysis in PDF</label></div>
+    </div>
+  </details>
+
+  <div class="card">
+    <div class="card-head">
+      <h2>Captured steps <span class="n" id="stepCount"></span></h2>
+      <span style="font-size:11.5px;color:var(--muted)">Drag the number to reorder · click a thumbnail to move the marker</span>
+    </div>
+    <ul id="stepList"></ul>
+    <div class="empty" id="stepEmpty">No steps captured yet. Start recording, then perform the task.</div>
+  </div>
+
+  <div class="card" id="timingCard" style="display:none">
+    <div class="card-head"><h2>Time on screen</h2>
+      <span style="font-size:11.5px;color:var(--muted)">Duration from each capture until the next — the time the operator spent on that screen</span></div>
+    <div class="charts">
+      <div class="chart-box"><h3>Time per screen</h3>
+        <div class="cap">In step order — spikes show where the process stalls.</div>
+        <canvas id="chartDwell" height="200"></canvas></div>
+      <div class="chart-box"><h3>Slowest screens</h3>
+        <div class="cap">Ranked longest first — the bottleneck shortlist.</div>
+        <canvas id="chartSlow" height="200"></canvas></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h2>Document details</h2></div>
+    <div class="grid" style="max-width:920px">
+      <div class="field"><label>Template</label>
+        <select id="docTemplate"><option value="SOP">SOP — Standard Operating Procedure</option><option value="WIM">WIM — Work Instruction Manual</option></select></div>
+      <div class="field"><label>Title</label><input id="docTitle" placeholder="e.g. Crew Compliance — LMS Record Update"></div>
+      <div class="field"><label>Author</label><input id="docAuthor" placeholder="Prepared by"></div>
+      <div class="field"><label>Department / Process Owner</label><input id="docDept" placeholder="e.g. Quality &amp; Business Intelligence"></div>
+      <div class="field"><label>Version</label><input id="docVersion" value="1.0"></div>
+      <div class="field"><label>Date</label><input id="docDate" type="date"></div>
+    </div>
+    <div class="grid" style="margin-top:14px;max-width:920px">
+      <div class="field" id="fSop1"><label>Purpose</label><textarea id="docPurpose" rows="3"></textarea></div>
+      <div class="field" id="fSop2"><label>Scope</label><textarea id="docScope" rows="3"></textarea></div>
+      <div class="field" id="fSop3"><label>Responsibilities</label><textarea id="docResp" rows="3"></textarea></div>
+      <div class="field" id="fSop4"><label>References</label><textarea id="docRefs" rows="3"></textarea></div>
+      <div class="field" id="fWim1"><label>Materials / Tools Required</label><textarea id="docTools" rows="3"></textarea></div>
+    </div>
+    <div class="row" style="margin-top:18px">
+      <button class="primary" id="btnPdf" disabled>Export PDF</button>
+      <button id="btnCsv" disabled>Export CSV</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================ MODULE 2 ============================ -->
+<div class="panel" id="timemotion">
+
+  <div class="card">
+    <div class="card-head"><h2>Task setup</h2>
+      <span style="font-size:11.5px;color:var(--muted)">Use this to time someone else working — no screen capture involved</span></div>
+    <div class="grid" style="max-width:900px">
+      <div class="field"><label>Task / Process name</label><input id="tmTask" placeholder="e.g. Invoice validation"></div>
+      <div class="field"><label>Observer</label><input id="tmObserver" placeholder="Name"></div>
+      <div class="field"><label>Operator observed</label><input id="tmOperator" placeholder="Name"></div>
+      <div class="field"><label>Date</label><input id="tmDate" type="date"></div>
+    </div>
+    <div style="margin-top:16px">
+      <label>Steps / elements to observe</label>
+      <div id="tmStepEditor"></div>
+      <div class="row" style="margin-top:8px"><button class="tiny" id="btnAddStep">Add Step</button></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h2>Observation</h2></div>
+    <div class="clock-wrap">
+      <div class="clock" id="tmClock">00:00.0</div>
+      <div class="clock-meta" id="tmMeta">Not started</div>
+    </div>
+    <div class="row" style="margin-bottom:16px">
+      <button class="primary" id="btnTmStart">Start Cycle</button>
+      <button id="btnTmEnd" disabled>End Cycle</button>
+      <button class="ghost danger" id="btnTmReset">Reset Study</button>
+    </div>
+    <div id="tmRunList"></div>
+    <div class="hint">Click a step's <strong>Lap</strong> button when the operator finishes that element. Elapsed time since the previous lap is logged against it and timing moves to the next step. Ending a cycle starts the next repetition with the same step list.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h2>Logged observations <span class="n" id="tmLogCount"></span></h2></div>
+    <table id="tmTable"><thead><tr>
+      <th style="width:60px">Cycle</th><th>Step</th><th style="width:110px">Duration</th>
+      <th style="width:186px">Classification</th><th style="width:110px">Logged at</th><th style="width:50px"></th>
+    </tr></thead><tbody></tbody></table>
+    <div class="empty" id="tmEmpty">No observations logged yet.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h2>Summary</h2></div>
+    <div class="kpis" id="tmKpis" style="margin-bottom:18px"></div>
+    <div class="charts">
+      <div class="chart-box"><h3>Cycle time trend</h3><div class="cap">Variation between repetitions.</div><canvas id="chartCycle" height="200"></canvas></div>
+      <div class="chart-box"><h3>VA / NVA / Necessary NVA</h3><div class="cap">Where the time actually goes.</div><canvas id="chartVA" height="200"></canvas></div>
+      <div class="chart-box" style="grid-column:1/-1"><h3>Average time per step</h3><div class="cap">Longest first — bar colour shows the classification.</div><canvas id="chartStep" height="220"></canvas></div>
+    </div>
+    <div class="row" style="margin-top:20px">
+      <button class="primary" id="btnTmPdf" disabled>Export PDF</button>
+      <button id="btnTmCsv" disabled>Export CSV</button>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<!-- Marker editor -->
+<div class="modal" id="mkModal">
+  <div class="mcard">
+    <div class="head">
+      <strong id="mkTitle">Set click position</strong>
+      <span style="font-size:12px;color:var(--muted)">Click anywhere on the screenshot to place the marker.</span>
+    </div>
+    <div class="stage"><img id="mkImg" alt="Step screenshot"></div>
+    <div class="foot">
+      <span class="left" id="mkPos">No marker set</span>
+      <button id="mkRemove" class="danger">Remove marker</button>
+      <button id="mkClose" class="primary">Done</button>
+    </div>
+  </div>
+</div>
+
+<video id="preview" autoplay muted playsinline></video>
+<div id="offscreen"><canvas id="pdfChart" width="820" height="330"></canvas></div>
+
+<script>
+/* ============================================================
+   HELPERS
+   ============================================================ */
+const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+const pad = (n,l=2) => String(n).padStart(l,'0');
+const todayISO = () => new Date().toISOString().slice(0,10);
+function fmtHMS(ms){
+  const t=Math.max(0,Math.floor(ms/1000));
+  return `${pad(Math.floor(t/3600))}:${pad(Math.floor(t%3600/60))}:${pad(t%60)}`;
+}
+function fmtClock(ms){const t=Math.max(0,ms),m=Math.floor(t/60000),s=Math.floor(t%60000/1000),d=Math.floor(t%1000/100);
+  return `${pad(m)}:${pad(s)}.${d}`;}
+function fmtDur(ms){
+  const t=Math.max(0,ms);
+  if(t<60000) return (t/1000).toFixed(1)+'s';
+  const m=Math.floor(t/60000), s=Math.round(t%60000/1000);
+  return m+'m '+pad(s)+'s';
+}
+function fmtTime(d){return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;}
+function esc(v){return String(v==null?'':v);}
+function csvCell(v){const s=esc(v);return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;}
+function downloadCSV(rows, filename){
+  const csv=rows.map(r=>r.map(csvCell).join(',')).join('\r\n');
+  const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=filename;
+  document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();},500);
+}
+function safeName(s,fb){const c=(s||'').trim().replace(/[^\w\- ]+/g,'').replace(/\s+/g,'_');return c?c.slice(0,60):fb;}
+function hexToRgb(h){const m=/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(h);
+  return m?[parseInt(m[1],16),parseInt(m[2],16),parseInt(m[3],16)]:[232,69,44];}
+$$('.tab').forEach(t=>t.addEventListener('click',()=>{
+  $$('.tab').forEach(x=>x.classList.remove('active'));
+  $$('.panel').forEach(x=>x.classList.remove('active'));
+  t.classList.add('active'); $('#'+t.dataset.panel).classList.add('active');
+}));
+$('#docDate').value=todayISO();
+$('#tmDate').value=todayISO();
+
+/* ============================================================
+   MODULE 1 — CAPTURE + SESSION TIMING
+   ============================================================ */
+let stream=null, video=$('#preview'), steps=[], stepSeq=0, lastCaptureAt=0;
+let sessStart=null, sessEnd=null, sessTimer=null;
+
+const slowMs = () => +$('#slowThresh').value * 1000;
+
+/* Time on screen: capture N holds until capture N+1. The final step holds
+   until recording stops (or "now" while still live). */
+function dwellOf(i){
+  const s=steps[i];
+  if(i < steps.length-1) return steps[i+1].t - s.t;
+  const end = sessEnd || (stream ? Date.now() : (s.t));
+  return Math.max(0, end - s.t);
+}
+function sessionMs(){
+  if(!sessStart) return 0;
+  return (sessEnd || Date.now()) - sessStart;
+}
+function timingStats(){
+  const d = steps.map((_,i)=>dwellOf(i));
+  const total = d.reduce((a,b)=>a+b,0);
+  const longest = d.length ? Math.max(...d) : 0;
+  return { d, total, longest, avg: d.length ? total/d.length : 0,
+           longestIdx: d.indexOf(longest) };
+}
+
+function setCapStatus(msg,cls){const el=$('#capStatus');el.className='status'+(cls?' '+cls:'');el.innerHTML=msg;}
+function recordingOn(on){
+  $('#btnStart').disabled=on; $('#btnCapture').disabled=!on;
+  $('#btnStop').disabled=!on; $('#btnPip').disabled=!on;
+  $('#recbar').classList.toggle('live',on);
+  $('#recLamp').textContent = on ? 'Recording' : (sessStart?'Stopped':'Not recording');
+}
+function tickSession(){
+  $('#sessClock').textContent = fmtHMS(sessionMs());
+  if(steps.length) refreshKpis();
+}
+function refreshKpis(){
+  const st=timingStats();
+  $('#kSteps').textContent = steps.length;
+  $('#kAvg').textContent = steps.length ? fmtDur(st.avg) : '—';
+  $('#kLongest').textContent = steps.length ? fmtDur(st.longest) : '—';
+  $('#kActive').textContent = steps.length ? fmtDur(st.total) : '—';
+}
+function refreshExports(){
+  const has=steps.length>0;
+  $('#btnPdf').disabled=!has; $('#btnCsv').disabled=!has;
+  $('#stepEmpty').style.display=has?'none':'block';
+  $('#stepCount').textContent=has?`(${steps.length})`:'';
+  $('#timingCard').style.display=has?'':'none';
+  refreshKpis(); renderTimingCharts(); syncPip();
+}
+
+$('#btnStart').addEventListener('click', async () => {
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia){
+    setCapStatus('Screen capture is not supported in this browser. Use Chrome or Edge.','err'); return;
+  }
+  try{
+    stream = await navigator.mediaDevices.getDisplayMedia({ video:{frameRate:10, cursor:'always'}, audio:false });
+    video.srcObject=stream;
+    await video.play().catch(()=>{});
+    stream.getVideoTracks()[0].addEventListener('ended',()=>{
+      endStream('Screen share was stopped. '+steps.length+' step(s) and all timings kept — export below, or start again to continue the session.','');
+    });
+    /* First start sets the session clock; resuming after an interruption keeps it. */
+    if(!sessStart){ sessStart=Date.now(); }
+    sessEnd=null;
+    clearInterval(sessTimer); sessTimer=setInterval(tickSession,250); tickSession();
+    recordingOn(true); startDetector();
+    setCapStatus(autoOn()
+      ? 'Recording in <strong>auto</strong> mode — session clock running. Perform the task; steps, click markers and time-on-screen are captured for you.'
+      : 'Recording — session clock running. Use <strong>Capture Step</strong> or <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>C</kbd>.','on');
+  }catch(err){
+    stream=null; recordingOn(false);
+    const denied = err && (err.name==='NotAllowedError'||err.name==='SecurityError');
+    setCapStatus(denied
+      ? 'Screen share permission was denied or cancelled. Nothing was lost — click Start Recording to try again.'
+      : 'Could not start screen capture ('+(err&&err.name?err.name:'unknown error')+'). Existing steps and timings are safe.','err');
+  }
+});
+function endStream(msg,cls){
+  stopDetector(); closePip();
+  if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; }
+  video.srcObject=null;
+  sessEnd = Date.now();
+  clearInterval(sessTimer); sessTimer=null;
+  tickSession(); recordingOn(false); setCapStatus(msg,cls); renderSteps(); refreshExports();
+}
+$('#btnStop').addEventListener('click',()=>{
+  const n=steps.length;
+  endStream('Recording stopped after '+fmtHMS(sessionMs())+' with '+n+' step(s). Timing analysis and export are ready below.','');
+});
+
+/* ---------- Frame grab ---------- */
+function grabFrame(){
+  if(!stream||!video.videoWidth) return null;
+  const maxW=1400, scale=Math.min(1,maxW/video.videoWidth);
+  const c=document.createElement('canvas');
+  c.width=Math.round(video.videoWidth*scale); c.height=Math.round(video.videoHeight*scale);
+  c.getContext('2d').drawImage(video,0,0,c.width,c.height);
+  return {cnv:c,w:c.width,h:c.height};
+}
+
+/* ============================================================
+   CLICK MARKER
+   ============================================================ */
+const mkOpts=()=>({style:$('#mkStyle').value,color:$('#mkColor').value,
+  size:+$('#mkSize').value,num:$('#mkNumber').checked});
+
+function renderStep(s,index){
+  const o=mkOpts();
+  const key=[o.style,o.color,o.size,o.num,index,s.mx==null?'-':s.mx.toFixed(4),s.my==null?'-':s.my.toFixed(4)].join('|');
+  if(s._key===key && s._url) return s._url;
+  const src=s.cnv, W=src.width, H=src.height;
+  const c=document.createElement('canvas'); c.width=W; c.height=H;
+  const x=c.getContext('2d'); x.drawImage(src,0,0);
+  if(o.style!=='none' && s.mx!=null && s.my!=null){
+    const cx=s.mx*W, cy=s.my*H;
+    const r=Math.max(14,W*(o.size/100));
+    const [R,G,B]=hexToRgb(o.color), rgb=`rgb(${R},${G},${B})`;
+    const lw=Math.max(2.5,r*0.16);
+    if(o.style==='spot'){
+      x.save(); x.beginPath(); x.rect(0,0,W,H); x.arc(cx,cy,r*1.9,0,Math.PI*2,true);
+      x.fillStyle='rgba(15,20,25,0.42)'; x.fill('evenodd'); x.restore();
+    }
+    if(o.style==='pulse'){
+      const g=x.createRadialGradient(cx,cy,r*0.2,cx,cy,r*2.1);
+      g.addColorStop(0,`rgba(${R},${G},${B},0.32)`); g.addColorStop(1,`rgba(${R},${G},${B},0)`);
+      x.fillStyle=g; x.beginPath(); x.arc(cx,cy,r*2.1,0,Math.PI*2); x.fill();
+    }
+    x.lineJoin='round';
+    if(o.style==='box'){
+      const bw=r*2.6, bh=r*1.7;
+      x.strokeStyle='rgba(255,255,255,0.95)'; x.lineWidth=lw+3; x.strokeRect(cx-bw/2,cy-bh/2,bw,bh);
+      x.strokeStyle=rgb; x.lineWidth=lw; x.strokeRect(cx-bw/2,cy-bh/2,bw,bh);
+    } else {
+      x.beginPath(); x.arc(cx,cy,r,0,Math.PI*2);
+      x.strokeStyle='rgba(255,255,255,0.95)'; x.lineWidth=lw+3; x.stroke();
+      x.strokeStyle=rgb; x.lineWidth=lw; x.stroke();
+      x.fillStyle=`rgba(${R},${G},${B},0.16)`; x.fill();
+    }
+    if(o.num){
+      const br=Math.max(11,r*0.62);
+      const bx=cx+(o.style==='box'?r*1.3:r)*0.80, by=cy-(o.style==='box'?r*0.85:r)*0.80;
+      x.beginPath(); x.arc(bx,by,br,0,Math.PI*2); x.fillStyle=rgb; x.fill();
+      x.strokeStyle='#fff'; x.lineWidth=Math.max(1.5,br*0.16); x.stroke();
+      x.fillStyle='#fff'; x.textAlign='center'; x.textBaseline='middle';
+      x.font=`600 ${Math.round(br*1.15)}px "Segoe UI",Arial,sans-serif`;
+      x.fillText(String(index+1),bx,by+br*0.03);
+    }
+  }
+  s._key=key; s._url=c.toDataURL('image/jpeg',0.86);
+  return s._url;
+}
+['#mkStyle','#mkColor','#mkSize','#mkNumber'].forEach(id=>
+  $(id).addEventListener('input',()=>{syncMarkerLabels();renderSteps();}));
+function syncMarkerLabels(){ $('#lblMkSize').textContent=(+$('#mkSize').value).toFixed(2)+'%'; }
+$('#slowThresh').addEventListener('input',()=>{syncSlowLabel();renderSteps();renderTimingCharts();});
+function syncSlowLabel(){ $('#lblSlow').textContent=$('#slowThresh').value+'s'; }
+syncMarkerLabels(); syncSlowLabel();
+
+/* ---------- Capture ---------- */
+function captureStep(auto){
+  if(!stream){ setCapStatus('Not recording. Click Start Recording first.','err'); return; }
+  const frame=grabFrame();
+  if(!frame){ setCapStatus('Frame not ready yet — wait a moment and capture again.','err'); return; }
+  const now=Date.now();
+  lastCaptureAt=now;
+  let mx=null,my=null,mkAuto=false;
+  if(hotspot && (now-hotspot.at)<6000){ mx=hotspot.x; my=hotspot.y; mkAuto=true; }
+  steps.push({id:++stepSeq,cnv:frame.cnv,w:frame.w,h:frame.h,desc:'',t:now,auto:!!auto,mx,my,mkAuto});
+  hotspot=null;
+  renderSteps(); refreshExports();
+  if(!auto){ const i=document.querySelector('.step:last-child .desc'); if(i) i.focus(); }
+  setCapStatus('Step '+steps.length+(auto?' auto-captured ':' captured ')+'at '+fmtHMS(now-sessStart)+' into the session'+
+    (mx!=null?'. Click position detected.':'. No click position detected — click the thumbnail to set one.'),'on');
+}
+$('#btnCapture').addEventListener('click',()=>captureStep(false));
+document.addEventListener('keydown',e=>{
+  if(e.altKey&&e.shiftKey&&(e.key==='C'||e.key==='c')){
+    e.preventDefault();
+    if($('#capture').classList.contains('active')) captureStep(false);
+  }
+});
+$('#btnClear').addEventListener('click',()=>{
+  if(!steps.length) return;
+  if(!confirm('Delete all '+steps.length+' captured step(s)? Session timing will also reset.')) return;
+  steps=[]; if(!stream){ sessStart=null; sessEnd=null; $('#sessClock').textContent='00:00:00'; }
+  renderSteps(); refreshExports();
+});
+
+/* ============================================================
+   AUTO-CAPTURE — change detection + click hotspot
+   ============================================================ */
+const DW=80,DH=45;
+const dc=document.createElement('canvas'); dc.width=DW; dc.height=DH;
+const dctx=dc.getContext('2d',{willReadFrequently:true});
+let prevGrid=null,detTimer=null,changing=false,quietSince=0,hotspot=null;
+const autoOn=()=>$('#capMode').value==='auto';
+const sens=()=>+$('#capSens').value;
+const settle=()=>+$('#capSettle').value;
+const minGap=()=>+$('#capGap').value;
+
+function sampleDiff(){
+  if(!video.videoWidth) return null;
+  dctx.drawImage(video,0,0,DW,DH);
+  const d=dctx.getImageData(0,0,DW,DH).data;
+  const grid=new Uint8Array(DW*DH);
+  for(let i=0,p=0;i<d.length;i+=4,p++) grid[p]=(d[i]*0.299+d[i+1]*0.587+d[i+2]*0.114)|0;
+  let mean=0,cx=0,cy=0,wsum=0;
+  if(prevGrid){
+    let sum=0; const cut=Math.max(10,sens()*2.5);
+    for(let p=0;p<grid.length;p++){
+      const dv=Math.abs(grid[p]-prevGrid[p]); sum+=dv;
+      if(dv>cut){ const gx=p%DW, gy=(p/DW)|0; cx+=gx*dv; cy+=gy*dv; wsum+=dv; }
+    }
+    mean=sum/grid.length;
+  }
+  prevGrid=grid;
+  return {mean, hot: wsum?{x:(cx/wsum+0.5)/DW,y:(cy/wsum+0.5)/DH}:null};
+}
+function detectTick(){
+  const r=sampleDiff(); if(!r) return;
+  $('#meterFill').style.width=Math.min(100,r.mean*4)+'%';
+  const now=Date.now();
+  if(r.mean>sens()){
+    if(!changing&&r.hot) hotspot={x:r.hot.x,y:r.hot.y,at:now};
+    changing=true; quietSince=0;
+  } else if(changing){
+    if(!quietSince) quietSince=now;
+    if(now-quietSince>=settle()){
+      changing=false; quietSince=0;
+      if(autoOn()&&now-lastCaptureAt>=minGap()) captureStep(true);
+    }
+  }
+}
+function startDetector(){prevGrid=null;changing=false;quietSince=0;hotspot=null;
+  clearInterval(detTimer);detTimer=setInterval(detectTick,150);}
+function stopDetector(){clearInterval(detTimer);detTimer=null;$('#meterFill').style.width='0%';}
+function syncSliderLabels(){
+  $('#lblSens').textContent=sens();
+  $('#lblSettle').textContent=(settle()/1000).toFixed(1)+'s';
+  $('#lblGap').textContent=(minGap()/1000).toFixed(2)+'s';
+  $('#setBody').classList.toggle('manual',!autoOn());
+}
+['#capSens','#capSettle','#capGap','#capMode'].forEach(id=>$(id).addEventListener('input',syncSliderLabels));
+syncSliderLabels();
+
+/* ---------- Floating always-on-top button ---------- */
+let pipWin=null;
+async function openPip(){
+  if(!('documentPictureInPicture' in window)){
+    setCapStatus('This browser does not support the floating window (needs Chrome/Edge 116+). Use the hotkey or auto mode instead.','err'); return;
+  }
+  try{
+    pipWin=await documentPictureInPicture.requestWindow({width:290,height:206});
+    const st=pipWin.document.createElement('style');
+    st.textContent=`body{margin:0;font-family:"Segoe UI",Arial,sans-serif;background:#fff;color:#161A1E;
+      display:flex;flex-direction:column;gap:9px;padding:14px;box-sizing:border-box}
+      #cap{flex:1;font:600 15px "Segoe UI",Arial;background:#1F4E79;color:#fff;border:none;border-radius:4px;cursor:pointer}
+      #cap:active{background:#17395A}
+      .r{display:flex;align-items:center;justify-content:space-between;font-size:12px;color:#6B7280}
+      #n,#t{font-weight:600;color:#1F4E79}
+      #n{font-size:20px} #t{font-size:15px;font-family:Consolas,monospace}
+      label{display:flex;gap:6px;align-items:center;font-size:12px;color:#6B7280}`;
+    pipWin.document.head.append(st);
+    pipWin.document.body.innerHTML=`<div class="r"><span>Session</span><span id="t">00:00:00</span></div>
+      <div class="r"><span>Steps captured</span><span id="n">0</span></div>
+      <button id="cap">Capture Step</button>
+      <label><input type="checkbox" id="auto"> Auto-capture on screen change</label>`;
+    pipWin.document.getElementById('cap').addEventListener('click',()=>captureStep(false));
+    const cb=pipWin.document.getElementById('auto');
+    cb.checked=autoOn();
+    cb.addEventListener('change',()=>{$('#capMode').value=cb.checked?'auto':'manual';syncSliderLabels();});
+    pipWin.addEventListener('pagehide',()=>{pipWin=null;});
+    syncPip();
+    setCapStatus('Floating panel opened — it stays on top of every window, showing the live session clock and step count.','on');
+  }catch(e){
+    pipWin=null;
+    setCapStatus('Could not open the floating window ('+(e&&e.name?e.name:'error')+'). Use the hotkey or auto mode instead.','err');
+  }
+}
+function syncPip(){
+  if(!pipWin) return;
+  const n=pipWin.document.getElementById('n'); if(n) n.textContent=steps.length;
+  const t=pipWin.document.getElementById('t'); if(t) t.textContent=fmtHMS(sessionMs());
+  const cb=pipWin.document.getElementById('auto'); if(cb) cb.checked=autoOn();
+}
+function closePip(){if(pipWin){try{pipWin.close();}catch(e){}pipWin=null;}}
+$('#btnPip').addEventListener('click',openPip);
+
+/* ============================================================
+   STEP LIST
+   ============================================================ */
+let dragId=null;
+function renderSteps(){
+  const list=$('#stepList'); list.innerHTML='';
+  const st=timingStats();
+  const peak=Math.max(1,st.longest);
+  steps.forEach((s,i)=>{
+    const dwell=dwellOf(i), slow=dwell>=slowMs(), live=(i===steps.length-1 && !!stream);
+    const li=document.createElement('li');
+    li.className='step'; li.dataset.id=s.id;
+
+    const num=document.createElement('div'); num.className='num'; num.textContent=i+1;
+    num.draggable=true;
+    num.addEventListener('dragstart',e=>{dragId=s.id;li.classList.add('dragging');e.dataTransfer.effectAllowed='move';});
+    num.addEventListener('dragend',()=>{dragId=null;li.classList.remove('dragging');
+      $$('.step').forEach(x=>x.classList.remove('over'));});
+
+    const wrap=document.createElement('div'); wrap.className='thumbwrap';
+    const img=document.createElement('img'); img.className='thumb'; img.src=renderStep(s,i);
+    img.title='Click to place the marker here';
+    img.addEventListener('click',ev=>{
+      const r=img.getBoundingClientRect();
+      s.mx=(ev.clientX-r.left)/r.width; s.my=(ev.clientY-r.top)/r.height; s.mkAuto=false;
+      renderSteps();
+    });
+    const tg=document.createElement('div'); tg.className='tag';
+    tg.textContent = s.mx==null?'no marker':(s.mkAuto?'marker: auto':'marker: set');
+    wrap.appendChild(img); wrap.appendChild(tg);
+
+    const body=document.createElement('div'); body.className='body';
+    const desc=document.createElement('input'); desc.className='desc';
+    desc.placeholder='Describe this step in one line'; desc.value=s.desc;
+    desc.addEventListener('input',e=>{s.desc=e.target.value;});
+
+    const strip=document.createElement('div'); strip.className='timestrip';
+    strip.innerHTML =
+      `<span class="tchip dwell${slow?' slow':''}">Time on screen <b>${fmtDur(dwell)}${live?' …':''}</b></span>`+
+      `<span class="tchip">At <b>${fmtHMS(s.t-sessStart)}</b></span>`+
+      (i>0?`<span class="tchip">Since previous <b>${fmtDur(s.t-steps[i-1].t)}</b></span>`:
+           `<span class="tchip">First capture</span>`);
+
+    const bar=document.createElement('div'); bar.className='bar'+(slow?' slow':'');
+    bar.innerHTML=`<div style="width:${Math.max(2,dwell/peak*100)}%"></div>`;
+
+    const meta=document.createElement('div'); meta.className='meta';
+    meta.textContent='Captured '+fmtTime(new Date(s.t))+(s.auto?' · auto':'')+(slow?' · flagged as a long screen':'');
+
+    body.appendChild(desc); body.appendChild(strip); body.appendChild(bar); body.appendChild(meta);
+
+    const acts=document.createElement('div'); acts.className='acts';
+    const edit=document.createElement('button'); edit.className='tiny'; edit.textContent='Marker';
+    edit.addEventListener('click',()=>openMarkerEditor(s.id));
+    const del=document.createElement('button'); del.className='tiny danger'; del.textContent='Delete';
+    del.addEventListener('click',()=>{steps=steps.filter(x=>x.id!==s.id);renderSteps();refreshExports();});
+    acts.appendChild(edit); acts.appendChild(del);
+
+    li.appendChild(num); li.appendChild(wrap); li.appendChild(body); li.appendChild(acts);
+    li.addEventListener('dragover',e=>{e.preventDefault();if(dragId!==null&&dragId!==s.id)li.classList.add('over');});
+    li.addEventListener('dragleave',()=>li.classList.remove('over'));
+    li.addEventListener('drop',e=>{
+      e.preventDefault(); li.classList.remove('over');
+      if(dragId===null||dragId===s.id) return;
+      const from=steps.findIndex(x=>x.id===dragId), to=steps.findIndex(x=>x.id===s.id);
+      const [m]=steps.splice(from,1); steps.splice(to,0,m);
+      renderSteps(); renderTimingCharts();
+    });
+    list.appendChild(li);
+  });
+  refreshKpis();
+}
+
+/* ---------- Timing charts ---------- */
+let chDwell=null, chSlow=null;
+const chartBase={responsive:true,animation:false,
+  plugins:{legend:{labels:{font:{family:'Segoe UI',size:11}}}},
+  scales:{x:{grid:{display:false},ticks:{font:{size:10}}},
+          y:{grid:{color:'#F0F2F5'},ticks:{font:{size:10}},beginAtZero:true}}};
+
+function renderTimingCharts(){
+  if(!steps.length) return;
+  const st=timingStats();
+  const secs=st.d.map(v=>+(v/1000).toFixed(1));
+  const labels=steps.map((s,i)=>'Step '+(i+1));
+  const colors=st.d.map(v=>v>=slowMs()?'#B42318':'#2E6DA4');
+
+  if(chDwell) chDwell.destroy();
+  chDwell=new Chart($('#chartDwell'),{type:'bar',
+    data:{labels,datasets:[{label:'Seconds on screen',data:secs,backgroundColor:colors,borderRadius:2}]},
+    options:{...chartBase,plugins:{legend:{display:false},
+      tooltip:{callbacks:{afterLabel:(c)=>steps[c.dataIndex].desc||''}}}}});
+
+  const order=steps.map((s,i)=>({i,ms:st.d[i]})).sort((a,b)=>b.ms-a.ms).slice(0,10);
+  if(chSlow) chSlow.destroy();
+  chSlow=new Chart($('#chartSlow'),{type:'bar',
+    data:{labels:order.map(o=>'Step '+(o.i+1)),
+      datasets:[{label:'Seconds',data:order.map(o=>+(o.ms/1000).toFixed(1)),
+        backgroundColor:order.map(o=>o.ms>=slowMs()?'#B42318':'#2E6DA4'),borderRadius:2}]},
+    options:{...chartBase,indexAxis:'y',
+      scales:{x:{grid:{color:'#F0F2F5'},ticks:{font:{size:10}},beginAtZero:true},
+              y:{grid:{display:false},ticks:{font:{size:10}}}},
+      plugins:{legend:{display:false},
+        tooltip:{callbacks:{afterLabel:(c)=>steps[order[c.dataIndex].i].desc||''}}}}});
+}
+
+/* ---------- Marker editor ---------- */
+let mkEditId=null;
+function openMarkerEditor(id){
+  const i=steps.findIndex(s=>s.id===id); if(i<0) return;
+  mkEditId=id; const s=steps[i];
+  $('#mkTitle').textContent='Step '+(i+1)+' — set click position';
+  $('#mkImg').src=renderStep(s,i);
+  $('#mkPos').textContent=s.mx==null?'No marker set'
+    :'Marker at '+(s.mx*100).toFixed(1)+'% × '+(s.my*100).toFixed(1)+'%'+(s.mkAuto?' (auto-detected)':'');
+  $('#mkModal').classList.add('open');
+}
+$('#mkImg').addEventListener('click',ev=>{
+  const i=steps.findIndex(s=>s.id===mkEditId); if(i<0) return;
+  const s=steps[i], r=ev.target.getBoundingClientRect();
+  s.mx=(ev.clientX-r.left)/r.width; s.my=(ev.clientY-r.top)/r.height; s.mkAuto=false;
+  $('#mkImg').src=renderStep(s,i);
+  $('#mkPos').textContent='Marker at '+(s.mx*100).toFixed(1)+'% × '+(s.my*100).toFixed(1)+'%';
+  renderSteps();
+});
+$('#mkRemove').addEventListener('click',()=>{
+  const i=steps.findIndex(s=>s.id===mkEditId); if(i<0) return;
+  const s=steps[i]; s.mx=s.my=null; s.mkAuto=false;
+  $('#mkImg').src=renderStep(s,i); $('#mkPos').textContent='No marker set'; renderSteps();
+});
+$('#mkClose').addEventListener('click',()=>{$('#mkModal').classList.remove('open');mkEditId=null;});
+$('#mkModal').addEventListener('click',e=>{if(e.target.id==='mkModal'){$('#mkModal').classList.remove('open');mkEditId=null;}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){$('#mkModal').classList.remove('open');mkEditId=null;}});
+
+/* ---------- Template fields ---------- */
+function syncTemplateFields(){
+  const wim=$('#docTemplate').value==='WIM';
+  ['#fSop1','#fSop2','#fSop3','#fSop4'].forEach(id=>$(id).style.display=wim?'none':'');
+  $('#fWim1').style.display=wim?'':'none';
+}
+$('#docTemplate').addEventListener('change',syncTemplateFields); syncTemplateFields();
+
+/* ---------- CSV export ---------- */
+$('#btnCsv').addEventListener('click',()=>{
+  const st=timingStats();
+  const rows=[['Step No','Description','Captured At','Session Offset','Time On Screen (s)',
+    'Share Of Session (%)','Since Previous (s)','Flagged Long','Trigger','Click X (%)','Click Y (%)','Marker Source']];
+  steps.forEach((s,i)=>{
+    const dw=st.d[i];
+    rows.push([i+1, s.desc||'(no description)', new Date(s.t).toLocaleString(), fmtHMS(s.t-sessStart),
+      (dw/1000).toFixed(1), st.total?((dw/st.total)*100).toFixed(1):'',
+      i===0?'':((s.t-steps[i-1].t)/1000).toFixed(1),
+      dw>=slowMs()?'Yes':'No', s.auto?'Auto':'Manual',
+      s.mx==null?'':(s.mx*100).toFixed(1), s.my==null?'':(s.my*100).toFixed(1),
+      s.mx==null?'None':(s.mkAuto?'Auto-detected':'Manually set')]);
+  });
+  rows.push([]);
+  rows.push(['Session total', fmtHMS(sessionMs())]);
+  rows.push(['Timed total (sum of screens)', (st.total/1000).toFixed(1)+' s']);
+  rows.push(['Average per screen', (st.avg/1000).toFixed(1)+' s']);
+  rows.push(['Longest screen', 'Step '+(st.longestIdx+1)+' — '+(st.longest/1000).toFixed(1)+' s']);
+  downloadCSV(rows, safeName($('#docTitle').value,'sop_capture')+'_steps.csv');
+});
+
+/* ---------- PDF export ---------- */
+$('#btnPdf').addEventListener('click',()=>{
+  const { jsPDF }=window.jspdf;
+  const doc=new jsPDF({unit:'mm',format:'a4',orientation:'portrait'});
+  const PW=210,PH=297,M=18,ACC=[31,78,121];
+  const tpl=$('#docTemplate').value;
+  const title=$('#docTitle').value.trim()||'Untitled Procedure';
+  const author=$('#docAuthor').value.trim(), dept=$('#docDept').value.trim();
+  const ver=$('#docVersion').value.trim(), dt=$('#docDate').value;
+  const st=timingStats();
+  const withTiming=$('#incTiming').checked;
+  let page=0;
+
+  function chrome(){
+    page++;
+    doc.setDrawColor(228,231,235); doc.setLineWidth(0.3);
+    doc.line(M,14,PW-M,14);
+    doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(120);
+    doc.text(title.slice(0,70),M,11);
+    doc.text(tpl+(ver?'  ·  v'+ver:''),PW-M,11,{align:'right'});
+    doc.line(M,PH-14,PW-M,PH-14);
+    doc.text(dept||'',M,PH-9);
+    doc.text('Page '+page,PW-M,PH-9,{align:'right'});
+    doc.setTextColor(22,26,30);
+  }
+  function block(label,value,y){
+    if(!value||!value.trim()) return y;
+    doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(ACC[0],ACC[1],ACC[2]);
+    doc.text(label.toUpperCase(),M,y); y+=5;
+    doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(22,26,30);
+    const lines=doc.splitTextToSize(value.trim(),PW-2*M);
+    doc.text(lines,M,y);
+    return y+lines.length*4.8+7;
+  }
+  function h(label,y){
+    doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(ACC[0],ACC[1],ACC[2]);
+    doc.text(label.toUpperCase(),M,y); doc.setTextColor(22,26,30);
+    return y+7;
+  }
+
+  /* ---- Cover ---- */
+  doc.setFillColor(ACC[0],ACC[1],ACC[2]); doc.rect(0,0,PW,4,'F');
+  doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(120);
+  doc.text(tpl==='SOP'?'STANDARD OPERATING PROCEDURE':'WORK INSTRUCTION MANUAL',M,52);
+  doc.setFont('helvetica','bold'); doc.setFontSize(24); doc.setTextColor(22,26,30);
+  doc.text(doc.splitTextToSize(title,PW-2*M),M,66);
+  doc.setDrawColor(ACC[0],ACC[1],ACC[2]); doc.setLineWidth(0.8); doc.line(M,100,M+34,100);
+
+  let cy=116; doc.setFontSize(10);
+  [['Author',author],['Department / Owner',dept],['Version',ver],
+   ['Date',dt?new Date(dt+'T00:00:00').toLocaleDateString():''],
+   ['Total steps',String(steps.length)],
+   ['Observed duration',fmtHMS(sessionMs())]].forEach(([k,v])=>{
+    if(!v) return;
+    doc.setFont('helvetica','normal'); doc.setTextColor(120); doc.text(k,M,cy);
+    doc.setFont('helvetica','bold'); doc.setTextColor(22,26,30); doc.text(String(v),M+55,cy);
+    cy+=7;
+  });
+  cy+=12;
+  if(tpl==='SOP'){
+    cy=block('Purpose',$('#docPurpose').value,cy);
+    cy=block('Scope',$('#docScope').value,cy);
+    cy=block('Responsibilities',$('#docResp').value,cy);
+    cy=block('References',$('#docRefs').value,cy);
+  } else {
+    cy=block('Materials / Tools Required',$('#docTools').value,cy);
+  }
+  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(150);
+  doc.text('Captured from a live screen session. Click positions and time on screen recorded automatically. Internal use only.',M,PH-14);
+
+  /* ---- Step pages ---- */
+  steps.forEach((s,i)=>{
+    doc.addPage(); chrome();
+    const dwell=st.d[i], slow=dwell>=slowMs();
+    doc.setFont('helvetica','bold'); doc.setFontSize(13); doc.setTextColor(ACC[0],ACC[1],ACC[2]);
+    doc.text('Step '+(i+1),M,28);
+
+    if(withTiming){
+      doc.setFont('helvetica','bold'); doc.setFontSize(9);
+      if(slow) doc.setTextColor(180,35,24); else doc.setTextColor(ACC[0],ACC[1],ACC[2]);
+      doc.text(fmtDur(dwell)+' on screen',PW-M,28,{align:'right'});
+      doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(140);
+      doc.text('at '+fmtHMS(s.t-sessStart)+' into session'+
+        (st.total?'  ·  '+((dwell/st.total)*100).toFixed(0)+'% of total':''),PW-M,32,{align:'right'});
+    }
+
+    doc.setFont('helvetica','normal'); doc.setFontSize(11); doc.setTextColor(22,26,30);
+    const dLines=doc.splitTextToSize(s.desc.trim()||'(no description provided)',PW-2*M-40);
+    doc.text(dLines,M,36);
+    let top=36+dLines.length*5+6;
+    const availW=PW-2*M, availH=PH-top-24, ratio=s.h/s.w;
+    let w=availW,hgt=w*ratio;
+    if(hgt>availH){ hgt=availH; w=hgt/ratio; }
+    doc.setDrawColor(228,231,235); doc.setLineWidth(0.3);
+    doc.rect(M+(availW-w)/2,top,w,hgt);
+    doc.addImage(renderStep(s,i),'JPEG',M+(availW-w)/2,top,w,hgt);
+    doc.setFontSize(8); doc.setTextColor(140);
+    doc.text('Captured '+new Date(s.t).toLocaleString()+
+      (i?'   ·   +'+fmtDur(s.t-steps[i-1].t)+' since previous step':'')+
+      (s.mx!=null?'   ·   click position marked':''),M,top+hgt+5);
+  });
+
+  /* ---- Timing analysis pages ---- */
+  if(withTiming){
+    doc.addPage(); chrome();
+    let y=h('Time and motion summary',28);
+    doc.setFontSize(10);
+    [['Session duration (start to stop)',fmtHMS(sessionMs())],
+     ['Screens captured',String(steps.length)],
+     ['Total time across screens',fmtDur(st.total)],
+     ['Average time per screen',fmtDur(st.avg)],
+     ['Longest screen','Step '+(st.longestIdx+1)+' — '+fmtDur(st.longest)],
+     ['Screens over '+($('#slowThresh').value)+'s',String(st.d.filter(v=>v>=slowMs()).length)]]
+    .forEach(([k,v])=>{
+      doc.setFont('helvetica','normal'); doc.setTextColor(120); doc.text(k,M,y);
+      doc.setFont('helvetica','bold'); doc.setTextColor(22,26,30); doc.text(v,M+82,y);
+      y+=6.4;
+    });
+
+    y+=8; y=h('Time on screen by step',y);
+    const cols=[M,M+16,M+112,M+140,M+166];
+    doc.setFontSize(8.5); doc.setTextColor(120); doc.setFont('helvetica','bold');
+    ['#','Step description','At','On screen','Share'].forEach((t,i)=>doc.text(t,cols[i],y));
+    y+=3; doc.setDrawColor(228,231,235); doc.line(M,y,PW-M,y); y+=5;
+    doc.setFont('helvetica','normal'); doc.setTextColor(22,26,30);
+    steps.forEach((s,i)=>{
+      if(y>PH-26){ doc.addPage(); chrome(); y=28; }
+      const dwell=st.d[i], slow=dwell>=slowMs();
+      doc.setTextColor(22,26,30);
+      doc.text(String(i+1),cols[0],y);
+      doc.text(doc.splitTextToSize(s.desc.trim()||'(no description)',92)[0],cols[1],y);
+      doc.setTextColor(130); doc.text(fmtHMS(s.t-sessStart),cols[2],y);
+      if(slow){ doc.setTextColor(180,35,24); doc.setFont('helvetica','bold'); }
+      else { doc.setTextColor(22,26,30); }
+      doc.text(fmtDur(dwell),cols[3],y);
+      doc.setFont('helvetica','normal'); doc.setTextColor(130);
+      doc.text(st.total?((dwell/st.total)*100).toFixed(0)+'%':'—',cols[4],y);
+      y+=5.6;
+    });
+
+    /* Chart page — rendered offscreen at print resolution */
+    const cnv=$('#pdfChart');
+    const secs=st.d.map(v=>+(v/1000).toFixed(1));
+    const tmp=new Chart(cnv,{type:'bar',
+      data:{labels:steps.map((s,i)=>String(i+1)),
+        datasets:[{data:secs,backgroundColor:st.d.map(v=>v>=slowMs()?'#B42318':'#2E6DA4')}]},
+      options:{responsive:false,animation:false,
+        plugins:{legend:{display:false},title:{display:false}},
+        scales:{x:{grid:{display:false},title:{display:true,text:'Step',font:{size:11}}},
+                y:{grid:{color:'#EDEFF2'},beginAtZero:true,
+                   title:{display:true,text:'Seconds on screen',font:{size:11}}}}}});
+    const img=cnv.toDataURL('image/png',1.0);
+    tmp.destroy();
+    doc.addPage(); chrome();
+    let cy2=h('Time on screen — distribution',28);
+    doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(130);
+    doc.text('Bars in red exceed the '+$('#slowThresh').value+'s threshold and are the candidates for simplification or automation.',M,cy2);
+    doc.addImage(img,'PNG',M,cy2+6,PW-2*M,(PW-2*M)*(330/820));
+  }
+
+  doc.save(safeName(title,'procedure')+'_'+tpl+'.pdf');
+});
+
+renderSteps(); refreshExports();
+
+/* ============================================================
+   MODULE 2 — OBSERVER TIME STUDY
+   ============================================================ */
+const CLASSES=[{v:'VA',label:'Value-Added'},{v:'NVA',label:'Non-Value-Added'},{v:'NNVA',label:'Necessary NVA'}];
+const CLASS_COLOR={VA:'#1F4E79',NVA:'#B42318',NNVA:'#C58A12'};
+let tmSteps=[],tmLogs=[],tmSeq=0,tmCycle=1,tmPtr=0;
+let tmRunning=false,tmCycleStart=0,tmLapStart=0,tmTimer=null;
+function addTmStep(n){tmSteps.push({id:++tmSeq,name:n||''});}
+['','',''].forEach(()=>addTmStep(''));
+function renderStepEditor(){
+  const host=$('#tmStepEditor'); host.innerHTML='';
+  tmSteps.forEach((s,i)=>{
+    const d=document.createElement('div'); d.className='row'; d.style.marginBottom='6px';
+    d.innerHTML=`<span style="width:22px;font-size:12px;color:var(--muted)">${i+1}</span>`;
+    const inp=document.createElement('input');
+    inp.style.flex='1'; inp.style.maxWidth='520px'; inp.placeholder='Step / element name'; inp.value=s.name;
+    inp.addEventListener('input',e=>{s.name=e.target.value;renderRunList();});
+    const rm=document.createElement('button'); rm.className='tiny danger'; rm.textContent='Remove';
+    rm.addEventListener('click',()=>{tmSteps=tmSteps.filter(x=>x.id!==s.id);
+      if(tmPtr>=tmSteps.length)tmPtr=0;renderStepEditor();renderRunList();});
+    d.appendChild(inp); d.appendChild(rm); host.appendChild(d);
+  });
+}
+$('#btnAddStep').addEventListener('click',()=>{addTmStep('');renderStepEditor();renderRunList();});
+function stepLabel(i){return (tmSteps[i]&&tmSteps[i].name.trim())||('Step '+(i+1));}
+function renderRunList(){
+  const host=$('#tmRunList'); host.innerHTML='';
+  if(!tmSteps.length){host.innerHTML='<div class="empty">Add at least one step above.</div>';return;}
+  tmSteps.forEach((s,i)=>{
+    const row=document.createElement('div');
+    row.className='tm-step'+(tmRunning&&i===tmPtr?' current':'');
+    row.innerHTML=`<div class="idx">${i+1}</div><div>${esc(stepLabel(i))||'&nbsp;'}</div>`;
+    const sel=document.createElement('select');
+    CLASSES.forEach(c=>{const o=document.createElement('option');o.value=c.v;o.textContent=c.label;sel.appendChild(o);});
+    sel.value=s.lastCls||'VA';
+    sel.addEventListener('change',()=>{s.lastCls=sel.value;});
+    const lap=document.createElement('button'); lap.className='tiny'; lap.textContent='Lap'; lap.disabled=!tmRunning;
+    lap.addEventListener('click',()=>logLap(i,sel.value));
+    const done=document.createElement('div');
+    done.style.fontSize='12px'; done.style.color='var(--muted)';
+    const n=tmLogs.filter(l=>l.stepIndex===i).length; done.textContent=n?n+'×':'';
+    row.appendChild(sel); row.appendChild(lap); row.appendChild(done);
+    host.appendChild(row);
+  });
+}
+function tick(){$('#tmClock').textContent=fmtClock(Date.now()-tmCycleStart);}
+$('#btnTmStart').addEventListener('click',()=>{
+  if(!tmSteps.length){alert('Add at least one step to observe.');return;}
+  tmRunning=true; tmPtr=0; tmCycleStart=tmLapStart=Date.now();
+  clearInterval(tmTimer); tmTimer=setInterval(tick,100); tick();
+  $('#btnTmStart').disabled=true; $('#btnTmEnd').disabled=false;
+  $('#tmMeta').textContent='Cycle '+tmCycle+' running — timing "'+stepLabel(0)+'"';
+  renderRunList();
+});
+function logLap(i,cls){
+  if(!tmRunning) return;
+  const now=Date.now();
+  tmLogs.push({cycle:tmCycle,stepIndex:i,stepName:stepLabel(i),ms:now-tmLapStart,cls,at:new Date(now)});
+  tmLapStart=now; tmPtr=Math.min(i+1,tmSteps.length);
+  $('#tmMeta').textContent = tmPtr>=tmSteps.length
+    ? 'Cycle '+tmCycle+' — all steps logged. Click End Cycle.'
+    : 'Cycle '+tmCycle+' running — timing "'+stepLabel(tmPtr)+'"';
+  renderRunList(); renderTmTable(); renderSummary();
+}
+$('#btnTmEnd').addEventListener('click',()=>{
+  if(!tmRunning) return;
+  clearInterval(tmTimer); tmRunning=false; tmCycle++; tmPtr=0;
+  $('#btnTmStart').disabled=false; $('#btnTmEnd').disabled=true;
+  $('#btnTmStart').textContent='Start Cycle '+tmCycle;
+  $('#tmClock').textContent='00:00.0';
+  $('#tmMeta').textContent='Cycle '+(tmCycle-1)+' complete. Ready for cycle '+tmCycle+'.';
+  renderRunList(); renderSummary();
+});
+$('#btnTmReset').addEventListener('click',()=>{
+  if(tmLogs.length&&!confirm('Clear all logged observations for this study?')) return;
+  clearInterval(tmTimer);
+  tmLogs=[];tmCycle=1;tmPtr=0;tmRunning=false;
+  $('#btnTmStart').disabled=false; $('#btnTmStart').textContent='Start Cycle';
+  $('#btnTmEnd').disabled=true;
+  $('#tmClock').textContent='00:00.0'; $('#tmMeta').textContent='Not started';
+  renderRunList(); renderTmTable(); renderSummary();
+});
+function renderTmTable(){
+  const tb=$('#tmTable tbody'); tb.innerHTML='';
+  tmLogs.forEach((l,idx)=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${l.cycle}</td><td>${esc(l.stepName)}</td><td>${fmtDur(l.ms)}</td>`;
+    const td=document.createElement('td');
+    const sel=document.createElement('select');
+    CLASSES.forEach(c=>{const o=document.createElement('option');o.value=c.v;o.textContent=c.label;sel.appendChild(o);});
+    sel.value=l.cls;
+    sel.addEventListener('change',()=>{l.cls=sel.value;renderTmTable();renderSummary();});
+    td.appendChild(sel); tr.appendChild(td);
+    const t2=document.createElement('td'); t2.textContent=fmtTime(l.at); tr.appendChild(t2);
+    const t3=document.createElement('td');
+    const del=document.createElement('button'); del.className='tiny danger'; del.textContent='×';
+    del.addEventListener('click',()=>{tmLogs.splice(idx,1);renderTmTable();renderSummary();renderRunList();});
+    t3.appendChild(del); tr.appendChild(t3);
+    tb.appendChild(tr);
+  });
+  const has=tmLogs.length>0;
+  $('#tmEmpty').style.display=has?'none':'block';
+  $('#tmTable').style.display=has?'':'none';
+  $('#tmLogCount').textContent=has?`(${tmLogs.length})`:'';
+  $('#btnTmCsv').disabled=!has; $('#btnTmPdf').disabled=!has;
+}
+function analyse(){
+  const cycles=[...new Set(tmLogs.map(l=>l.cycle))].sort((a,b)=>a-b);
+  const cycleTotals=cycles.map(c=>tmLogs.filter(l=>l.cycle===c).reduce((s,l)=>s+l.ms,0));
+  const clsTotals={VA:0,NVA:0,NNVA:0};
+  tmLogs.forEach(l=>clsTotals[l.cls]+=l.ms);
+  const total=clsTotals.VA+clsTotals.NVA+clsTotals.NNVA;
+  const names=[...new Set(tmLogs.map(l=>l.stepName))];
+  const perStep=names.map(n=>{
+    const set=tmLogs.filter(l=>l.stepName===n).map(l=>l.ms);
+    const sum=set.reduce((a,b)=>a+b,0);
+    return {name:n,n:set.length,avg:sum/set.length,min:Math.min(...set),max:Math.max(...set),
+      cls:tmLogs.filter(l=>l.stepName===n).slice(-1)[0].cls};
+  }).sort((a,b)=>b.avg-a.avg);
+  return {cycles,cycleTotals,clsTotals,total,perStep};
+}
+let chCycle=null,chVA=null,chStep=null;
+function renderSummary(){
+  const a=analyse();
+  const pct=v=>a.total?(v/a.total*100).toFixed(1)+'%':'—';
+  const avgCycle=a.cycleTotals.length?a.cycleTotals.reduce((x,y)=>x+y,0)/a.cycleTotals.length:0;
+  $('#tmKpis').innerHTML=[['Cycles observed',a.cycles.length],
+    ['Avg cycle time',avgCycle?fmtDur(avgCycle):'—'],
+    ['Value-Added',pct(a.clsTotals.VA)],['Non-Value-Added',pct(a.clsTotals.NVA)],
+    ['Necessary NVA',pct(a.clsTotals.NNVA)]]
+    .map(([l,v])=>`<div class="kpi"><div class="v">${v}</div><div class="l">${l}</div></div>`).join('');
+  const secs=arr=>arr.map(v=>+(v/1000).toFixed(1));
+  if(chCycle) chCycle.destroy();
+  chCycle=new Chart($('#chartCycle'),{type:'line',
+    data:{labels:a.cycles.map(c=>'Cycle '+c),
+      datasets:[{label:'Cycle time (s)',data:secs(a.cycleTotals),borderColor:'#1F4E79',
+        backgroundColor:'rgba(31,78,121,.08)',fill:true,tension:.25,pointRadius:4}]},
+    options:{...chartBase,plugins:{legend:{display:false}}}});
+  if(chVA) chVA.destroy();
+  chVA=new Chart($('#chartVA'),{type:'doughnut',
+    data:{labels:['Value-Added','Non-Value-Added','Necessary NVA'],
+      datasets:[{data:secs([a.clsTotals.VA,a.clsTotals.NVA,a.clsTotals.NNVA]),
+        backgroundColor:[CLASS_COLOR.VA,CLASS_COLOR.NVA,CLASS_COLOR.NNVA],borderWidth:0}]},
+    options:{responsive:true,animation:false,cutout:'58%',
+      plugins:{legend:{position:'bottom',labels:{font:{family:'Segoe UI',size:11},boxWidth:12}}}}});
+  if(chStep) chStep.destroy();
+  chStep=new Chart($('#chartStep'),{type:'bar',
+    data:{labels:a.perStep.map(s=>s.name),
+      datasets:[{label:'Avg time (s)',data:secs(a.perStep.map(s=>s.avg)),
+        backgroundColor:a.perStep.map(s=>CLASS_COLOR[s.cls]),borderRadius:2}]},
+    options:{...chartBase,plugins:{legend:{display:false}}}});
+}
+$('#btnTmCsv').addEventListener('click',()=>{
+  const task=$('#tmTask').value.trim()||'Untitled task';
+  const rows=[['Task','Observer','Operator','Date','Cycle','Step No','Step','Duration (s)','Classification','Logged At']];
+  tmLogs.forEach(l=>rows.push([task,$('#tmObserver').value,$('#tmOperator').value,$('#tmDate').value,
+    l.cycle,l.stepIndex+1,l.stepName,(l.ms/1000).toFixed(2),
+    (CLASSES.find(c=>c.v===l.cls)||{}).label||l.cls,l.at.toLocaleString()]));
+  downloadCSV(rows,safeName(task,'time_study')+'_timestudy.csv');
+});
+$('#btnTmPdf').addEventListener('click',()=>{
+  const { jsPDF }=window.jspdf;
+  const doc=new jsPDF({unit:'mm',format:'a4'});
+  const PW=210,PH=297,M=18,ACC=[31,78,121];
+  const a=analyse(); const task=$('#tmTask').value.trim()||'Untitled task';
+  let page=1;
+  function foot(){
+    doc.setDrawColor(228,231,235); doc.setLineWidth(0.3); doc.line(M,PH-14,PW-M,PH-14);
+    doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(140);
+    doc.text('Observer Time Study  ·  '+task.slice(0,60),M,PH-9);
+    doc.text('Page '+page,PW-M,PH-9,{align:'right'});
+    doc.setTextColor(22,26,30);
+  }
+  function newPage(){foot();doc.addPage();page++;return 24;}
+  doc.setFillColor(ACC[0],ACC[1],ACC[2]); doc.rect(0,0,PW,4,'F');
+  doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(120);
+  doc.text('OBSERVER TIME STUDY',M,26);
+  doc.setFont('helvetica','bold'); doc.setFontSize(20); doc.setTextColor(22,26,30);
+  doc.text(doc.splitTextToSize(task,PW-2*M),M,36);
+  let y=52; doc.setFontSize(9.5);
+  [['Observer',$('#tmObserver').value],['Operator observed',$('#tmOperator').value],
+   ['Date',$('#tmDate').value],['Cycles observed',String(a.cycles.length)],
+   ['Observations logged',String(tmLogs.length)]].forEach(([k,v])=>{
+    if(!v) return;
+    doc.setFont('helvetica','normal'); doc.setTextColor(120); doc.text(k,M,y);
+    doc.setFont('helvetica','bold'); doc.setTextColor(22,26,30); doc.text(String(v),M+50,y); y+=6;
+  });
+  y+=6;
+  doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(ACC[0],ACC[1],ACC[2]);
+  doc.text('VALUE CLASSIFICATION SPLIT',M,y); y+=7;
+  doc.setTextColor(22,26,30); doc.setFontSize(9.5);
+  const pct=v=>a.total?(v/a.total*100).toFixed(1)+'%':'0%';
+  [['Value-Added',a.clsTotals.VA],['Non-Value-Added',a.clsTotals.NVA],['Necessary Non-Value-Added',a.clsTotals.NNVA]]
+    .forEach(([k,v])=>{
+      doc.setFont('helvetica','normal'); doc.text(k,M,y); doc.text((v/1000).toFixed(1)+' s',M+70,y);
+      doc.setFont('helvetica','bold'); doc.text(pct(v),M+95,y); y+=6;
+    });
+  y+=8;
+  doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(ACC[0],ACC[1],ACC[2]);
+  doc.text('SUMMARY BY STEP (seconds)',M,y); y+=7;
+  const cols=[M,M+78,M+103,M+126,M+149,M+168];
+  doc.setFontSize(8.5); doc.setTextColor(120); doc.setFont('helvetica','bold');
+  ['Step','Obs','Avg','Min','Max','Class'].forEach((t,i)=>doc.text(t,cols[i],y));
+  y+=3; doc.setDrawColor(228,231,235); doc.line(M,y,PW-M,y); y+=5;
+  doc.setFont('helvetica','normal'); doc.setTextColor(22,26,30);
+  a.perStep.forEach(s=>{
+    if(y>PH-26) y=newPage();
+    doc.text(doc.splitTextToSize(s.name,74)[0],cols[0],y);
+    doc.text(String(s.n),cols[1],y);
+    doc.text((s.avg/1000).toFixed(1),cols[2],y);
+    doc.text((s.min/1000).toFixed(1),cols[3],y);
+    doc.text((s.max/1000).toFixed(1),cols[4],y);
+    doc.text(s.cls,cols[5],y); y+=5.6;
+  });
+  if(y>PH-60) y=newPage(); else y+=8;
+  doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(ACC[0],ACC[1],ACC[2]);
+  doc.text('CYCLE TOTALS',M,y); y+=7;
+  doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(22,26,30);
+  a.cycles.forEach((c,i)=>{
+    if(y>PH-26) y=newPage();
+    doc.text('Cycle '+c,M,y); doc.text((a.cycleTotals[i]/1000).toFixed(1)+' s',M+40,y); y+=5.6;
+  });
+  [['Cycle time trend',chCycle],['VA / NVA split',chVA],['Average time per step',chStep]].forEach(([label,ch])=>{
+    if(!ch) return;
+    y=newPage();
+    doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(ACC[0],ACC[1],ACC[2]);
+    doc.text(label,M,y); y+=8;
+    const img=ch.canvas.toDataURL('image/png',1.0);
+    const w=PW-2*M, hh=w*(ch.canvas.height/ch.canvas.width);
+    doc.addImage(img,'PNG',M,y,w,Math.min(hh,PH-y-26));
+  });
+  foot();
+  doc.save(safeName(task,'time_study')+'_timestudy.pdf');
+});
+
+renderStepEditor(); renderRunList(); renderTmTable(); renderSummary();
+</script>
+</body>
+</html>
